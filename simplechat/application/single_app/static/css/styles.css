@@ -1,0 +1,447 @@
+/* css/styles.css */
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #0073e6;
+    color: white;
+    padding: 10px 20px;
+}
+
+h1 {
+    margin: 0;
+}
+
+main {
+    padding: 20px;
+}
+
+/* Dark mode styles */
+[data-bs-theme="dark"] {
+    --bs-body-bg: #212529;
+    --bs-body-color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .navbar-light {
+    background-color: #343a40 !important;
+}
+
+[data-bs-theme="dark"] .navbar-light .navbar-brand,
+[data-bs-theme="dark"] .navbar-light .nav-link {
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .card {
+    background-color: #343a40;
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .text-muted {
+    color: #adb5bd !important;
+}
+
+[data-bs-theme="dark"] .modal-body::-webkit-scrollbar-track {
+    background: #343a40;
+}
+
+[data-bs-theme="dark"] .modal-content {
+    background-color: #212529;
+    color: #e9ecef;
+}
+
+/* Fix for workspace file metadata in dark mode */
+[data-bs-theme="dark"] .bg-light {
+    background-color: #343a40 !important;
+    color: #e9ecef !important;
+}
+
+/* Fix for group dropdown in dark mode */
+[data-bs-theme="dark"] #group-dropdown .group-search-container {
+    background-color: #343a40 !important;
+    border-bottom: 1px solid #495057 !important;
+}
+
+[data-bs-theme="dark"] #group-dropdown .dropdown-item:hover {
+    background-color: #495057 !important;
+    color: #e9ecef !important;
+}
+
+[data-bs-theme="dark"] #group-dropdown .dropdown-menu {
+    background-color: #343a40 !important;
+    color: #e9ecef !important;
+    border-color: #495057 !important;
+}
+
+/* Fix for table headers in document classification in dark mode */
+[data-bs-theme="dark"] .table-light,
+[data-bs-theme="dark"] thead.table-light,
+[data-bs-theme="dark"] .table-light>th,
+[data-bs-theme="dark"] .table-light>td {
+    background-color: #343a40 !important;
+    color: #e9ecef !important;
+    border-color: #495057 !important;
+}
+
+/* Fix for conversation options button in dark mode */
+[data-bs-theme="dark"] .btn-light {
+    background-color: #343a40 !important;
+    color: #e9ecef !important;
+    border-color: #495057 !important;
+}
+
+[data-bs-theme="dark"] .btn-light:hover {
+    background-color: #495057 !important;
+    border-color: #6c757d !important;
+}
+
+/* Dark mode toggle styles */
+.dark-mode-toggle {
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.dark-mode-toggle:hover {
+    opacity: 0.8;
+}
+
+/* Ensure nav-link containing dark mode toggle is aligned with other nav links */
+.nav-item .nav-link.dark-mode-toggle {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+/* Document dropdown improvements */
+#document-dropdown .dropdown-menu {
+    max-width: 400px;
+    min-width: 300px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#document-dropdown .dropdown-items-container {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+/* Ensure dropdown positioning is handled by Bootstrap */
+#document-dropdown .dropdown-menu[data-bs-popper] {
+    position: absolute !important;
+}
+
+/* Support for dropup class - force upward opening */
+#document-dropdown.dropup .dropdown-menu {
+    bottom: 100% !important;
+    top: auto !important;
+    margin-bottom: 0.125rem;
+    margin-top: 0;
+}
+
+/* Document dropdown button styling to match form controls */
+#document-dropdown-button {
+    width: 100%;
+}
+
+#document-dropdown-button:hover {
+    background-color: var(--bs-secondary-bg) !important;
+}
+
+#document-dropdown-button:focus {
+    border-color: var(--bs-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25) !important;
+}
+
+/* Dark mode document dropdown improvements */
+[data-bs-theme="dark"] #document-dropdown .dropdown-menu {
+    background-color: #343a40 !important;
+    color: #e9ecef !important;
+    border-color: #495057 !important;
+}
+
+[data-bs-theme="dark"] #document-dropdown .dropdown-item:hover {
+    background-color: #495057 !important;
+    color: #e9ecef !important;
+}
+
+[data-bs-theme="dark"] #document-dropdown .document-search-container {
+    background-color: #343a40 !important;
+    border-bottom: 1px solid #495057 !important;
+}
+
+/* ======================================
+   ENHANCED PDF CITATION VIEWER STYLES
+   ====================================== */
+
+/* Enhanced PDF Modal Styles */
+.citation-pdf-modal .modal-dialog {
+    max-width: 95vw;
+    height: 95vh;
+    margin: 2.5vh auto;
+}
+
+.citation-pdf-modal .modal-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.citation-pdf-modal .modal-header {
+    flex-shrink: 0;
+    padding: 1rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.citation-nav-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex-grow: 1;
+}
+
+.citation-counter {
+    font-size: 0.85em;
+    color: var(--bs-secondary-color);
+    font-weight: normal;
+}
+
+.citation-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.pdf-viewer-container {
+    position: relative;
+    flex: 1;
+    overflow: auto;
+    background: var(--bs-gray-100);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+}
+
+.pdf-canvas-wrapper {
+    position: relative;
+    display: inline-block;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border: 1px solid var(--bs-border-color);
+    background: white;
+}
+
+#pdf-canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+/* Citation Highlights Overlay */
+.citation-highlights {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.citation-highlight {
+    transition: all 0.2s ease;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.citation-highlight:hover {
+    background-color: rgba(255, 165, 0, 0.5) !important;
+    border-color: #ff8c00 !important;
+    transform: scale(1.02);
+}
+
+.citation-highlight.active {
+    background-color: rgba(255, 0, 0, 0.3) !important;
+    border-color: #ff0000 !important;
+    border-width: 3px !important;
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+/* PDF Controls Overlay */
+.pdf-controls-overlay {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    color: white;
+    backdrop-filter: blur(5px);
+    z-index: 20;
+}
+
+.pdf-navigation {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pdf-navigation .page-info {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: white;
+    font-size: 0.9em;
+}
+
+.pdf-navigation #current-page-input {
+    width: 60px;
+    text-align: center;
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+}
+
+.pdf-navigation #current-page-input:focus {
+    background: rgba(255,255,255,0.3);
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.pdf-zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pdf-controls-overlay .btn-secondary {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    font-size: 0.85em;
+    padding: 4px 8px;
+}
+
+.pdf-controls-overlay .btn-secondary:hover {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.5);
+    color: white;
+}
+
+#zoom-level {
+    color: white;
+    font-size: 0.9em;
+    min-width: 40px;
+    text-align: center;
+}
+
+/* Citation Tooltip */
+.citation-tooltip {
+    max-width: 300px;
+    word-wrap: break-word;
+    line-height: 1.4;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Dark Mode Support */
+[data-bs-theme="dark"] .pdf-viewer-container {
+    background: var(--bs-gray-800);
+}
+
+[data-bs-theme="dark"] .pdf-canvas-wrapper {
+    border-color: var(--bs-gray-600);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+[data-bs-theme="dark"] .citation-pdf-modal .modal-header {
+    background-color: var(--bs-gray-800);
+    border-bottom: 1px solid var(--bs-gray-600);
+}
+
+[data-bs-theme="dark"] .citation-counter {
+    color: var(--bs-gray-300);
+}
+
+[data-bs-theme="dark"] .pdf-navigation #current-page-input {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #e9ecef;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .citation-pdf-modal .modal-dialog {
+        max-width: 100vw;
+        height: 100vh;
+        margin: 0;
+    }
+    
+    .pdf-viewer-container {
+        padding: 10px;
+    }
+    
+    .pdf-controls-overlay {
+        flex-direction: column;
+        gap: 10px;
+        padding: 8px;
+        bottom: 10px;
+    }
+    
+    .citation-controls {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .citation-controls .btn {
+        font-size: 0.8em;
+        padding: 4px 8px;
+    }
+    
+    .pdf-navigation,
+    .pdf-zoom-controls {
+        gap: 5px;
+    }
+    
+    .pdf-navigation #current-page-input {
+        width: 50px;
+    }
+}
+
+@media (max-width: 480px) {
+    .citation-pdf-modal .modal-header {
+        padding: 0.75rem;
+    }
+    
+    .citation-nav-info .modal-title {
+        font-size: 1.1em;
+    }
+    
+    .citation-counter {
+        font-size: 0.75em;
+    }
+    
+    .pdf-controls-overlay {
+        left: 10px;
+        right: 10px;
+        transform: none;
+        width: auto;
+    }
+}

@@ -1,0 +1,14 @@
+0.89 = Prec
+0.8 = Recall
+
+0.71111/(0.89+0.8)[1.69]
+
+
+
+az webapp deployment source config-zip \
+  --name simple-chat-app \
+  --resource-group simple-chat \
+  --src deploy.zip
+
+
+fileshare name: simple-chat-fileshare
