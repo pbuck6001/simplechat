@@ -5,6 +5,11 @@ from functions_authentication import *
 from functions_search import *
 from functions_bing_search import *
 from functions_settings import *
+import logging
+from dotenv import load_dotenv
+
+load_dotenv()
+api_key = settings.get('azure_openai_gpt_key')
 
 def register_route_backend_chats(app):
     @app.route('/api/chat', methods=['POST'])
@@ -102,7 +107,23 @@ def register_route_backend_chats(app):
                 auth_type = settings.get('azure_openai_gpt_authentication_type')
                 endpoint = settings.get('azure_openai_gpt_endpoint')
                 api_version = settings.get('azure_openai_gpt_api_version')
+                # api_version = ""
                 gpt_model_obj = settings.get('gpt_model', {})
+
+
+                gpt_model_obj = {
+                    "selected": [
+                        {
+                            "deploymentName": "gpt-4o"
+                        }
+                    ],
+                    "all": [
+                        {
+                            "deploymentName": "gpt-4o"
+                        }
+                    ]
+                }
+
 
                 if gpt_model_obj and gpt_model_obj.get('selected'):
                     selected_gpt_model = gpt_model_obj['selected'][0]
@@ -110,6 +131,9 @@ def register_route_backend_chats(app):
                 else:
                     # Fallback or raise error if no model selected/configured
                     raise ValueError("No GPT model selected or configured.")
+
+                
+
 
                 if frontend_gpt_model:
                     gpt_model = frontend_gpt_model
@@ -127,16 +151,36 @@ def register_route_backend_chats(app):
                         azure_ad_token_provider=token_provider
                     )
                 else: # Default to API Key
+                    
+                    # if not api_key: raise ValueError("Azure OpenAI API Key not configured.")
+                    # gpt_client = AzureOpenAI(
+                    #     api_version=api_version,
+                    #     azure_endpoint=endpoint,
+                    #     api_key=api_key
+                    # )
                     api_key = settings.get('azure_openai_gpt_key')
-                    if not api_key: raise ValueError("Azure OpenAI API Key not configured.")
                     gpt_client = AzureOpenAI(
-                        api_version=api_version,
+                        # api_version="2024-12-01-preview",
                         azure_endpoint=endpoint,
+                        api_version=api_version
+                        # azure_endpoint="https://simple-chat-azure-openai.openai.azure.com/",
                         api_key=api_key
                     )
 
             if not gpt_client or not gpt_model:
                  raise ValueError("GPT Client or Model could not be initialized.")
+
+            logging.debug(f"Using GPT model: {gpt_model}")
+            response = gpt_client.chat.completions.create(
+                model=gpt_model,
+                messages=[
+                    {"role": "system", "content": "You are a snarky assistant"},
+                    {"role": "user", "content": user_message}
+                ],
+                max_tokens=500
+            )
+            logging.debug(f"GPT response: {response.choices[0].message.content.strip()}")
+
 
         except Exception as e:
              print(f"Error initializing GPT client/model: {e}")

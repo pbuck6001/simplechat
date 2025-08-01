@@ -2940,7 +2940,7 @@ def process_document_upload_background(document_id, user_id, temp_file_path, ori
         # Attempt to update status to Error
         try:
             update_doc_callback(
-                status=f"Error: {error_msg[:250]}", # Limit error message length
+                status=f"Error: {error_msg[:600]}", # Limit error message length
                 percentage_complete=0 # Indicate failure
             )
         except Exception as update_e:

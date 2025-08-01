@@ -281,7 +281,10 @@ export function loadAllDocs() {
     // Make sure dropdown shows when button is clicked
     docDropdownButton.addEventListener('click', function(e) {
       console.log("Dropdown button clicked");
-      // Let Bootstrap handle the dropdown display automatically
+      // Initialize dropdown after a short delay to ensure DOM is ready
+      setTimeout(() => {
+        initializeDocumentDropdown();
+      }, 100);
     });
     
     // Additionally listen for the bootstrap shown.bs.dropdown event
@@ -344,6 +347,10 @@ function initializeDocumentDropdown() {
   
   console.log("Initializing dropdown display");
   
+  // Make sure dropdown menu is visible and has proper z-index
+  docDropdownMenu.classList.add('show');
+  docDropdownMenu.style.zIndex = "1050"; // Ensure it's above other elements
+  
   // Reset visibility of items if no search term is active
   if (!docSearchInput || !docSearchInput.value.trim()) {
     console.log("Resetting item visibility");
@@ -363,6 +370,39 @@ function initializeDocumentDropdown() {
     docSearchInput.dispatchEvent(new Event('input', { bubbles: true }));
     docSearchInput.dispatchEvent(new Event('keyup', { bubbles: true }));
   }
+  
+  // Set a fixed narrower width for the dropdown
+  let maxWidth = 400; // Updated to 400px width
+  
+  // Calculate parent container width (we want dropdown to fit inside right pane)
+  const parentContainer = docDropdownButton.closest('.flex-grow-1');
+  if (parentContainer) {
+    const parentWidth = parentContainer.offsetWidth;
+    // Use the smaller of our fixed width or 90% of parent width
+    maxWidth = Math.min(maxWidth, parentWidth * 0.9);
+  }
+  
+  docDropdownMenu.style.maxWidth = `${maxWidth}px`;
+  docDropdownMenu.style.width = `${maxWidth}px`;
+  
+  // Ensure dropdown stays within viewport bounds
+  const menuRect = docDropdownMenu.getBoundingClientRect();
+  const viewportHeight = window.innerHeight;
+  
+  // If dropdown extends beyond viewport, adjust position or max-height
+  if (menuRect.bottom > viewportHeight) {
+    // Option 1: Adjust max-height to fit
+    const maxPossibleHeight = viewportHeight - menuRect.top - 10; // 10px buffer
+    docDropdownMenu.style.maxHeight = `${maxPossibleHeight}px`;
+    
+    // Also adjust the items container
+    if (docDropdownItems) {
+      // Account for search box height including its margin
+      const searchContainer = docDropdownMenu.querySelector('.document-search-container');
+      const searchHeight = searchContainer ? searchContainer.offsetHeight : 40;
+      docDropdownItems.style.maxHeight = `${maxPossibleHeight - searchHeight}px`;
+    }
+  }
 }
 /* ---------------------------------------------------------------------------
    UI Event Listeners
@@ -371,23 +411,53 @@ if (docScopeSelect) {
   docScopeSelect.addEventListener("change", populateDocumentSelectScope);
 }
 
-  if (searchDocumentsBtn) {
-    searchDocumentsBtn.addEventListener("click", function () {
-      this.classList.toggle("active");
+if (searchDocumentsBtn) {
+  searchDocumentsBtn.addEventListener("click", function () {
+    this.classList.toggle("active");
 
-      if (!searchDocumentsContainer) return;
+    if (!searchDocumentsContainer) return;
 
-      if (this.classList.contains("active")) {
-        searchDocumentsContainer.style.display = "block";
-        // Load documents when showing the container
-        loadAllDocs().then(() => {
-          console.log("Documents loaded successfully");
-        });
-      } else {
-        searchDocumentsContainer.style.display = "none";
-      }
-    });
-  }
+    if (this.classList.contains("active")) {
+      searchDocumentsContainer.style.display = "block";
+      // Ensure initial population and state is correct when opening
+      loadAllDocs().then(() => {
+        // Force Bootstrap to update the Popper positioning
+        try {
+          const dropdownInstance = bootstrap.Dropdown.getInstance(docDropdownButton);
+          if (dropdownInstance) {
+            dropdownInstance.update();
+          } else {
+            // Initialize dropdown if not already done
+            new bootstrap.Dropdown(docDropdownButton, {
+              boundary: 'viewport',
+              reference: 'toggle',
+              autoClose: 'outside',
+              popperConfig: {
+                strategy: 'fixed',
+                modifiers: [
+                  {
+                    name: 'preventOverflow',
+                    options: {
+                      boundary: 'viewport',
+                      padding: 10
+                    }
+                  }
+                ]
+              }
+            });
+          }
+        } catch (err) {
+          console.error("Error initializing dropdown:", err);
+        }
+        // handleDocumentSelectChange() is called by populateDocumentSelectScope within loadAllDocs
+      });
+    } else {
+      searchDocumentsContainer.style.display = "none";
+      // Optional: Reset classification state when hiding?
+      // resetClassificationState(); // You might want a function for this
+    }
+  });
+}
 
 if (docSelectEl) {
   // Listen for changes on the document select dropdown (this is now hidden and used as state keeper)
@@ -512,8 +582,10 @@ if (docSearchInput) {
       }
     }
     
-    // Dropdown should stay open automatically during filtering
-    // Bootstrap handles the visibility, no manual manipulation needed
+    // Make sure dropdown stays open and visible
+    if (docDropdownMenu) {
+      docDropdownMenu.classList.add('show');
+    }
   };
   
   // Attach input event directly 
@@ -720,48 +792,71 @@ function updateClassificationDropdownLabelAndValue() {
 
 // Initialize the dropdown on page load
 document.addEventListener('DOMContentLoaded', function() {
-  console.log("Document ready, setting up dropdown event listeners");
-  
-  // Only set up event listeners, let Bootstrap handle the dropdown initialization automatically
+  // If search documents button exists, it needs to be clicked to show controls
   if (searchDocumentsBtn && docScopeSelect && docDropdownButton) {
-    const dropdownEl = document.getElementById('document-dropdown');
-    
-    if (dropdownEl) {
-      // Listen for dropdown show event to focus search input
-      dropdownEl.addEventListener('shown.bs.dropdown', function() {
-        console.log("Dropdown shown - focusing search input");
-        
-        // Focus the search input when dropdown is shown
-        if (docSearchInput) {
-          setTimeout(() => {
-            docSearchInput.focus();
-          }, 100);
-        }
-        
-        // Initialize dropdown display
-        initializeDocumentDropdown();
-      });
+    try {
+      // Get the dropdown element
+      const dropdownEl = document.getElementById('document-dropdown');
       
-      // Clear search when dropdown is hidden
-      dropdownEl.addEventListener('hidden.bs.dropdown', function() {
-        if (docSearchInput) {
-          docSearchInput.value = '';
-          // Reset all items to visible
-          if (docDropdownItems) {
-            const items = docDropdownItems.querySelectorAll('.dropdown-item');
-            items.forEach(item => {
-              item.style.display = 'block';
-              item.removeAttribute('data-filtered');
-            });
-            
-            // Remove any "no matches" message
-            const noMatchesEl = docDropdownItems.querySelector('.no-matches');
-            if (noMatchesEl) {
-              noMatchesEl.remove();
-            }
+      if (dropdownEl) {
+        console.log("Initializing Bootstrap dropdown with search functionality");
+        
+        // Initialize Bootstrap dropdown with the right configuration
+        new bootstrap.Dropdown(docDropdownButton, {
+          boundary: 'viewport',
+          reference: 'toggle',
+          autoClose: 'outside', // Close when clicking outside, stay open when clicking inside
+          popperConfig: {
+            strategy: 'fixed',
+            modifiers: [
+              {
+                name: 'preventOverflow',
+                options: {
+                  boundary: 'viewport',
+                  padding: 10
+                }
+              }
+            ]
           }
+        });
+        
+        // Listen for dropdown show event
+        dropdownEl.addEventListener('shown.bs.dropdown', function() {
+          console.log("Dropdown shown - making sure items are visible");
+          initializeDocumentDropdown();
+          
+          // Focus the search input when dropdown is shown
+          if (docSearchInput) {
+            setTimeout(() => {
+              docSearchInput.focus();
+            }, 100);
+          }
+        });
+        
+        // Re-initialize the search filter every time the dropdown is shown
+        if (docSearchInput) {
+          // Clear any previous search when opening the dropdown
+          dropdownEl.addEventListener('show.bs.dropdown', function() {
+            docSearchInput.value = '';
+          });
+          
+          // Ensure the search filter is properly initialized when the dropdown is shown
+          dropdownEl.addEventListener('shown.bs.dropdown', function() {
+            // Explicitly focus and activate the search input
+            setTimeout(() => {
+              docSearchInput.focus();
+              
+              // Add click handler for search input to prevent dropdown from closing
+              docSearchInput.onclick = function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+              };
+            }, 150);
+          });
         }
-      });
+      }
+    } catch (err) {
+      console.error("Error initializing bootstrap dropdown:", err);
     }
   }
 });

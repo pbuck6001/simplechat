@@ -5,7 +5,6 @@ from functions_authentication import *
 from functions_content import *
 from functions_settings import *
 from functions_documents import *
-import traceback
 
 
 def register_route_frontend_chats(app):
@@ -581,81 +580,6 @@ def register_route_frontend_chats(app):
                     # Log error but don't prevent response from being sent
                     print(f"Error cleaning up file {local_file_path}: {e}")
 
-    @app.route("/api/debug/document_access/<doc_id>")
-    @login_required
-    @user_required
-    def debug_document_access(doc_id):
-        """
-        Diagnostic endpoint to debug document access issues
-        """
-        try:
-            settings = get_settings()
-            user_id = get_current_user_id()
-
-            result = {
-                "doc_id": doc_id,
-                "user_id": user_id,
-                "timestamp": datetime.utcnow().isoformat(),
-                "checks": {},
-            }
-
-            # 1. Document metadata check
-            try:
-                doc_response, status_code = get_document(user_id, doc_id)
-                result["checks"]["document_metadata"] = {
-                    "status": status_code,
-                    "accessible": status_code == 200,
-                }
-                if status_code == 200:
-                    raw_doc = doc_response.get_json()
-                    result["checks"]["document_metadata"]["file_name"] = raw_doc.get(
-                        "file_name"
-                    )
-                    result["checks"]["document_metadata"]["owner_user_id"] = (
-                        raw_doc.get("user_id")
-                    )
-            except Exception as e:
-                result["checks"]["document_metadata"] = {
-                    "status": "error",
-                    "error": str(e),
-                }
-
-            # 2. Storage configuration check
-            blob_service_client = CLIENTS.get("storage_account_office_docs_client")
-            storage_account_key = settings.get("office_docs_key")
-            storage_account_name = (
-                blob_service_client.account_name if blob_service_client else None
-            )
-            container_name = storage_account_user_documents_container_name
-
-            result["checks"]["storage_config"] = {
-                "client_available": blob_service_client is not None,
-                "account_name": storage_account_name,
-                "account_key_configured": storage_account_key is not None,
-                "container_name": container_name,
-                "all_configured": all(
-                    [blob_service_client, storage_account_key, container_name]
-                ),
-            }
-
-            # 3. Enhanced citations settings
-            result["checks"]["enhanced_citations"] = {
-                "enabled": settings.get("enable_enhanced_citations", False),
-                "mount_point": settings.get(
-                    "enhanced_citations_mount", "/view_documents"
-                ),
-            }
-
-            return jsonify(result), 200
-
-        except Exception as e:
-            return (
-                jsonify(
-                    {"error": "Diagnostic failed", "details": str(e), "doc_id": doc_id}
-                ),
-                500,
-            )
-
     @app.route("/view_document/<doc_id>")
     @login_required
     @user_required
@@ -665,119 +589,67 @@ def register_route_frontend_chats(app):
         Enhanced document viewer that serves full PDFs for the enhanced citation viewer
         Supports HTTP range requests for efficient PDF streaming
         """
-        try:
-            print(f"DEBUG: view_document_enhanced called with doc_id: {doc_id}")
+        settings = get_settings()
+        download_location = tempfile.gettempdir()
 
-            settings = get_settings()
-            download_location = tempfile.gettempdir()
+        if not doc_id:
+            return jsonify({"error": "doc_id parameter is required"}), 400
 
-            if not doc_id:
-                print("DEBUG: Missing doc_id parameter")
-                return jsonify({"error": "doc_id parameter is required"}), 400
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "User not authenticated"}), 401
 
-            user_id = get_current_user_id()
-            if not user_id:
-                print("DEBUG: User not authenticated")
-                return jsonify({"error": "User not authenticated"}), 401
+        # Fetch Document Metadata
+        doc_response, status_code = get_document(user_id, doc_id)
+        if status_code != 200:
+            return doc_response, status_code
 
-            print(f"DEBUG: User authenticated: {user_id}")
+        raw_doc = doc_response.get_json()
+        file_name = raw_doc.get("file_name")
+        owner_user_id = raw_doc.get("user_id")
 
-            # Fetch Document Metadata
-            print(f"DEBUG: Fetching document metadata for doc_id: {doc_id}")
-            doc_response, status_code = get_document(user_id, doc_id)
-            if status_code != 200:
-                print(f"DEBUG: Failed to get document metadata, status: {status_code}")
-                return doc_response, status_code
-
-            raw_doc = doc_response.get_json()
-            file_name = raw_doc.get("file_name")
-            owner_user_id = raw_doc.get("user_id")
-
-            print(
-                f"DEBUG: Document metadata - file_name: {file_name}, owner: {owner_user_id}"
+        if not file_name:
+            return (
+                jsonify(
+                    {"error": "Internal server error: Document metadata incomplete."}
+                ),
+                500,
             )
 
-            if not file_name:
-                print("DEBUG: Document metadata incomplete - missing file_name")
-                return (
-                    jsonify(
-                        {
-                            "error": "Internal server error: Document metadata incomplete."
-                        }
-                    ),
-                    500,
-                )
+        # Construct blob name using the owner's user_id from the document record
+        blob_name = f"{owner_user_id}/{file_name}"
+        file_ext = os.path.splitext(file_name)[-1].lower()
 
-            # Construct blob name using the owner's user_id from the document record
-            blob_name = f"{owner_user_id}/{file_name}"
-            file_ext = os.path.splitext(file_name)[-1].lower()
+        # Only support PDFs for enhanced viewer
+        if file_ext != ".pdf":
+            return (
+                jsonify(
+                    {
+                        "error": f"Enhanced viewer only supports PDF files. File type: {file_ext}"
+                    }
+                ),
+                415,
+            )
 
-            print(f"DEBUG: blob_name: {blob_name}, file_ext: {file_ext}")
+        # Ensure download location exists
+        try:
+            os.makedirs(download_location, exist_ok=True)
+        except OSError as e:
+            return (
+                jsonify(
+                    {"error": "Internal server error: Cannot access storage location."}
+                ),
+                500,
+            )
 
-            # Only support PDFs for enhanced viewer
-            if file_ext != ".pdf":
-                print(f"DEBUG: Unsupported file type: {file_ext}")
-                return (
-                    jsonify(
-                        {
-                            "error": f"Enhanced viewer only supports PDF files. File type: {file_ext}"
-                        }
-                    ),
-                    415,
-                )
-
-            # Ensure download location exists
-            try:
-                os.makedirs(download_location, exist_ok=True)
-                print(f"DEBUG: Download location confirmed: {download_location}")
-            except OSError as e:
-                print(f"DEBUG: Error creating download location: {e}")
-                return (
-                    jsonify(
-                        {
-                            "error": "Internal server error: Cannot access storage location."
-                        }
-                    ),
-                    500,
-                )
-
-            # Generate the SAS URL
-            print("DEBUG: Generating SAS URL...")
+        # Generate the SAS URL
+        try:
             blob_service_client = CLIENTS.get("storage_account_office_docs_client")
             storage_account_key = settings.get("office_docs_key")
-            storage_account_name = (
-                blob_service_client.account_name if blob_service_client else None
-            )
+            storage_account_name = blob_service_client.account_name
             container_name = storage_account_user_documents_container_name
 
-            # Fallback to hardcoded container name if config variable is empty
-            if not container_name:
-                container_name = "user-documents"
-                print(f"DEBUG: Using fallback container name: {container_name}")
-
-            print(
-                f"DEBUG: Storage config - account_name: {storage_account_name}, container: {container_name}"
-            )
-            print(f"DEBUG: Storage client available: {blob_service_client is not None}")
-            print(f"DEBUG: Storage key available: {storage_account_key is not None}")
-            print(
-                f"DEBUG: Container name value: '{container_name}' (len: {len(container_name) if container_name else 0})"
-            )
-            print(
-                f"DEBUG: All values check - client: {blob_service_client is not None}, key: {storage_account_key is not None}, container: {bool(container_name)}"
-            )
-            print(
-                f"DEBUG: Storage account key length: {len(storage_account_key) if storage_account_key else 0}"
-            )
-            print(
-                f"DEBUG: Storage account key starts with: {storage_account_key[:20] if storage_account_key else 'None'}..."
-            )
-            print(
-                f"DEBUG: Individual checks - client: {bool(blob_service_client)}, key: {bool(storage_account_key)}, container: {bool(container_name)}"
-            )
-
             if not all([blob_service_client, storage_account_key, container_name]):
-                print("DEBUG: Storage access not properly configured")
                 return (
                     jsonify(
                         {
@@ -809,29 +681,34 @@ def register_route_frontend_chats(app):
                 f"/{container_name}/{blob_name}?{sas_token}"
             )
 
-            print(f"DEBUG: Generated signed URL: {signed_url[:100]}...")
+        except Exception as e:
+            return (
+                jsonify(
+                    {
+                        "error": "Internal server error: Could not authorize document access."
+                    }
+                ),
+                500,
+            )
 
-            # For enhanced PDF viewer, we can either:
-            # 1. Redirect to the signed URL (simple, efficient)
-            # 2. Proxy the content (more secure, supports range requests)
+        # For enhanced PDF viewer, we can either:
+        # 1. Redirect to the signed URL (simple, efficient)
+        # 2. Proxy the content (more secure, supports range requests)
 
-            # Option 1: Direct redirect (recommended for initial implementation)
-            if request.headers.get("Accept", "").startswith("application/pdf"):
-                print("DEBUG: Direct PDF redirect requested")
-                return redirect(signed_url)
+        # Option 1: Direct redirect (recommended for initial implementation)
+        if request.headers.get("Accept", "").startswith("application/pdf"):
+            # Direct redirect for PDF.js requests
+            return redirect(signed_url)
 
-            # Option 2: Proxy content with range request support
-            print("DEBUG: Proxying content with range request support")
-
+        # Option 2: Proxy content with range request support
+        try:
             # Handle range requests for PDF streaming
             range_header = request.headers.get("Range")
-            print(f"DEBUG: Range header: {range_header}")
 
             if range_header:
                 # Parse range header and make partial content request
                 headers = {"Range": range_header}
                 response = requests.get(signed_url, headers=headers, stream=True)
-                print(f"DEBUG: Range request response status: {response.status_code}")
 
                 def generate():
                     for chunk in response.iter_content(chunk_size=8192):
@@ -849,10 +726,8 @@ def register_route_frontend_chats(app):
                 return flask_response
             else:
                 # Full content request
-                print("DEBUG: Making full content request")
                 response = requests.get(signed_url, stream=True)
                 response.raise_for_status()
-                print(f"DEBUG: Full request response status: {response.status_code}")
 
                 def generate():
                     for chunk in response.iter_content(chunk_size=8192):
@@ -867,10 +742,6 @@ def register_route_frontend_chats(app):
                 return flask_response
 
         except requests.exceptions.RequestException as e:
-            print(f"DEBUG: Request exception: {e}")
-            print(f"DEBUG: Exception traceback: {traceback.format_exc()}")
             return jsonify({"error": "Failed to retrieve document from storage"}), 500
         except Exception as e:
-            print(f"DEBUG: General exception in view_document_enhanced: {e}")
-            print(f"DEBUG: Exception traceback: {traceback.format_exc()}")
             return jsonify({"error": f"An internal error occurred: {str(e)}"}), 500
